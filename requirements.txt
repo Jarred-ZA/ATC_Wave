@@ -5,3 +5,5 @@ matplotlib>=3.3.0
 tqdm>=4.60.0
 SpeechRecognition>=3.8.0
 pydub>=0.25.1
+openai>=1.0.0
+python-dotenv>=1.0.0

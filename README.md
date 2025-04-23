@@ -8,7 +8,8 @@ A sophisticated tool to monitor air traffic control radio transmissions, detect 
 
 - **Live ATC Monitoring**: Download and analyze real-time air traffic control radio feeds
 - **Voice Activity Detection**: Automatically detect presence of voice transmissions
-- **Speech Recognition**: Transcribe ATC communications using advanced AI models
+- **Advanced Speech Recognition**: Transcribe ATC communications using OpenAI's Whisper AI model
+- **Aviation Context Awareness**: Specialized prompts for accurate ATC terminology recognition
 - **Audio Segmentation**: Identify and isolate individual voice transmissions
 - **Visual Analytics**: Generate waveform, energy, and spectrogram visualizations
 - **Detailed Reporting**: Save comprehensive analysis results to text files
@@ -21,13 +22,14 @@ A sophisticated tool to monitor air traffic control radio transmissions, detect 
 - Python 3.7+
 - ffmpeg (for audio conversion)
 - curl (for downloading streams)
+- OpenAI API key (for Whisper transcription, optional)
 
 ## 🔧 Installation
 
 1. Clone this repository:
    ```bash
-   git clone [repository-url]
-   cd atc-radio-monitor
+   git clone https://github.com/Jarred-ZA/ATC_Wave.git
+   cd ATC_Wave
    ```
 
 2. Install dependencies:
@@ -40,11 +42,16 @@ A sophisticated tool to monitor air traffic control radio transmissions, detect 
    - **Ubuntu/Debian**: `sudo apt install ffmpeg curl`
    - **Windows**: Download from [ffmpeg.org](https://ffmpeg.org/) and [curl.se](https://curl.se/)
 
+4. Set up OpenAI API key (optional but recommended):
+   - Copy `.env.example` to `.env`
+   - Add your OpenAI API key to the `.env` file
+   - Get your API key from [OpenAI](https://platform.openai.com/api-keys)
+
 ## 🚀 Usage
 
 ### Basic Usage
 
-Run the monitor with default settings (30-second samples):
+Run the monitor with default settings (60-second samples):
 
 ```bash
 python atc_monitor.py
@@ -55,8 +62,16 @@ python atc_monitor.py
 Specify a custom sampling duration in seconds:
 
 ```bash
-python atc_monitor.py 60  # Sample for 60 seconds
+python atc_monitor.py 120  # Sample for 2 minutes
 ```
+
+### Using OpenAI Whisper
+
+For better transcription results:
+
+1. Get an API key from [OpenAI](https://platform.openai.com/api-keys)
+2. Add it to your `.env` file
+3. Run the monitor as usual - it will automatically use Whisper for transcription
 
 ## 📊 Output Files
 
@@ -128,7 +143,9 @@ The system uses a threshold-based approach for voice activity detection:
 
 For transcription, the system employs several techniques:
 
-- **Google Speech Recognition API**: Provides accurate speech-to-text conversion
+- **OpenAI Whisper API**: State-of-the-art model for speech recognition with high accuracy
+- **Aviation Context Prompting**: Provides context about ATC terminology to improve results
+- **Google Speech Recognition API**: Used as fallback when OpenAI API key is not available
 - **Noise Reduction**: Pre-processes audio to enhance recognition quality
 - **Segmentation**: Identifies distinct voice transmissions for targeted transcription
 - **Energy Thresholding**: Focuses on high-energy segments likely to contain speech

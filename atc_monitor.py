@@ -14,6 +14,15 @@ from datetime import datetime
 import speech_recognition as sr
 from pydub import AudioSegment
 import re
+import openai
+import json
+from dotenv import load_dotenv
+
+# Load environment variables from .env file if it exists
+load_dotenv()
+
+# Get OpenAI API key from environment variable
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 def download_stream(url, duration=120):
     """
@@ -62,11 +71,59 @@ def convert_to_wav(mp3_path):
         print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Conversion failed: {str(e)}")
         raise
 
-def transcribe_audio(wav_path):
+def transcribe_with_whisper(audio_path):
     """
-    Transcribe speech in audio file
+    Transcribe speech using OpenAI's Whisper API
     """
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] 🎙️ Transcribing audio content...")
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] 🎙️ Transcribing with Whisper...")
+    
+    if not OPENAI_API_KEY:
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️ OpenAI API key not found. Falling back to Google Speech Recognition.")
+        return transcribe_with_google(audio_path)
+    
+    try:
+        client = openai.OpenAI(api_key=OPENAI_API_KEY)
+        
+        # Prepare prompt for ATC context
+        prompt = "This is an air traffic control (ATC) radio transmission. It may contain standard aviation phraseology, callsigns, runway numbers, and aviation terminology."
+        
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] 🔄 Uploading audio to OpenAI API...")
+        
+        # Open the audio file
+        with open(audio_path, "rb") as audio_file:
+            # Call the Whisper API
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] 🔄 Processing with Whisper model...")
+            
+            response = client.audio.transcriptions.create(
+                model="whisper-1",
+                file=audio_file,
+                language="en",
+                prompt=prompt,
+                response_format="verbose_json"
+            )
+            
+            # Extract the transcription
+            if isinstance(response, dict) and 'text' in response:
+                text = response['text']
+            else:
+                text = response.text
+                
+            # Clean up the transcription
+            text = re.sub(r'\s+', ' ', text).strip()
+            
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] ✅ Whisper transcription complete")
+            return text
+            
+    except Exception as e:
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️ Whisper transcription error: {e}")
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] ℹ️ Falling back to Google Speech Recognition.")
+        return transcribe_with_google(audio_path)
+
+def transcribe_with_google(wav_path):
+    """
+    Transcribe speech using Google's Speech Recognition
+    """
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] 🎙️ Transcribing with Google Speech Recognition...")
     
     try:
         # Initialize recognizer
@@ -87,7 +144,7 @@ def transcribe_audio(wav_path):
             # Clean up the transcription
             text = re.sub(r'\s+', ' ', text).strip()
             
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] ✅ Transcription complete")
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] ✅ Google transcription complete")
             return text
     except sr.UnknownValueError:
         print(f"[{datetime.now().strftime('%H:%M:%S')}] ℹ️ Speech recognition could not understand audio")
@@ -98,6 +155,15 @@ def transcribe_audio(wav_path):
     except Exception as e:
         print(f"[{datetime.now().strftime('%H:%M:%S')}] ❌ Transcription error: {e}")
         return f"Transcription error: {e}"
+
+def transcribe_audio(wav_path):
+    """
+    Transcribe speech in audio file using the best available method
+    """
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] 🎙️ Transcribing audio content...")
+    
+    # First try with Whisper (falls back to Google if API key not available)
+    return transcribe_with_whisper(wav_path)
 
 def segment_audio(wav_path):
     """
@@ -412,9 +478,9 @@ def main():
             duration = int(sys.argv[1])
         except ValueError:
             print("❌ Invalid duration specified. Using default.")
-            duration = 30
+            duration = 60
     else:
-        duration = 30  # Default duration of 30 seconds
+        duration = 60  # Default duration of 60 seconds (1 minute)
     
     # Display configuration details
     print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚙️  Configuration:")
@@ -423,7 +489,13 @@ def main():
     print(f"  📊 Visualizations directory: analysis_results/")
     print(f"  🔊 Audio archive directory: audio_archive/")
     print(f"  🎙️ Audio segments directory: audio_segments/")
-    print(f"  🎯 Speech recognition: Enabled")
+    
+    # Check speech recognition configuration
+    if OPENAI_API_KEY:
+        print(f"  🎯 Speech recognition: OpenAI Whisper API (preferred)")
+    else:
+        print(f"  🎯 Speech recognition: Google Speech Recognition (fallback)")
+        print(f"  ℹ️ To use OpenAI Whisper, set OPENAI_API_KEY in .env file")
     
     # Create required directories
     os.makedirs('monitoring_results', exist_ok=True)

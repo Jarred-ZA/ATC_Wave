@@ -35,3 +35,8 @@ env/
 *.mp3
 *.wav
 temp/
+
+# Environment variables and API keys
+.env
+.env.*
+!.env.example

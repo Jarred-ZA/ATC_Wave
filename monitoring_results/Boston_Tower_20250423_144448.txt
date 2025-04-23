@@ -1,0 +1,24 @@
+ATC Monitoring Results: Boston Tower
+Timestamp: 2025-04-23 14:44:48
+URL: https://s1-bos.liveatc.net/kbos_twr
+Duration: 15 seconds
+
+Results Summary:
+Voice Activity: DETECTED
+Energy: 0.030400
+Zero Crossing Rate: 0.128435
+Visualization: analysis_results/analysis_20250423_144504.png
+Audio Archive: audio_archive/Boston_Tower_20250423_144448.wav
+
+Transcription:
+"No clear speech detected"
+
+Segment Transcriptions:
+Segment 1 (4.74s - 6.20s): "No clear speech detected"
+Segment 2 (6.22s - 6.79s): "No clear speech detected"
+Segment 3 (7.18s - 8.48s): "No clear speech detected"
+Segment 4 (9.40s - 13.62s): "No clear speech detected"
+Segment 5 (14.01s - 14.59s): "No clear speech detected"
+Segment 6 (23.87s - 26.37s): "No clear speech detected"
+Segment 7 (26.55s - 28.00s): "No clear speech detected"
+Segment 8 (28.28s - 28.68s): "No clear speech detected"
