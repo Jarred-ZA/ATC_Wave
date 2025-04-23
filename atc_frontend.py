@@ -244,26 +244,93 @@ def display_waveform(audio_path):
         # Load the audio file
         y, sr = librosa.load(audio_path, sr=None)
         
-        # Create a figure
-        fig = go.Figure()
+        # Calculate RMS energy for highlighting voice sections
+        hop_length = int(sr * 0.01)  # 10ms windows
+        rms = librosa.feature.rms(y=y, hop_length=hop_length)[0]
+        times_rms = librosa.times_like(rms, sr=sr, hop_length=hop_length)
         
-        # Add waveform
+        # Determine voice activity threshold
+        threshold = 0.015
+        is_voice = rms > threshold
+        
+        # Create a figure with subplots
+        fig = make_subplots(rows=2, cols=1, 
+                           shared_xaxes=True,
+                           vertical_spacing=0.05,
+                           row_heights=[0.7, 0.3],
+                           subplot_titles=("Audio Waveform", "Energy Level"))
+        
+        # Add waveform to top subplot
         fig.add_trace(go.Scatter(
             y=y,
             x=np.arange(len(y)) / sr,
             name="Waveform",
             line=dict(color='royalblue', width=1),
-        ))
+        ), row=1, col=1)
+        
+        # Add energy plot to bottom subplot
+        fig.add_trace(go.Scatter(
+            y=rms,
+            x=times_rms,
+            name="Energy (RMS)",
+            line=dict(color='green', width=1.5),
+        ), row=2, col=1)
+        
+        # Add threshold line
+        fig.add_trace(go.Scatter(
+            y=[threshold] * len(times_rms),
+            x=times_rms,
+            name="Voice Threshold",
+            line=dict(color='red', width=1, dash='dash'),
+        ), row=2, col=1)
+        
+        # Highlight voice regions on the waveform
+        voice_regions = []
+        start_idx = None
+        
+        for i, active in enumerate(is_voice):
+            # Start of voice segment
+            if active and start_idx is None:
+                start_idx = i
+            # End of voice segment
+            elif not active and start_idx is not None:
+                # Convert frame indices to time
+                start_time = times_rms[start_idx]
+                end_time = times_rms[i]
+                voice_regions.append((start_time, end_time))
+                start_idx = None
+        
+        # Handle the case where the last segment extends to the end
+        if start_idx is not None:
+            voice_regions.append((times_rms[start_idx], times_rms[-1]))
+        
+        # Add voice region highlights
+        for start, end in voice_regions:
+            fig.add_vrect(
+                x0=start, x1=end,
+                fillcolor="rgba(255, 255, 0, 0.2)",
+                layer="below", line_width=0,
+                row=1, col=1
+            )
         
         # Update layout
         fig.update_layout(
-            title="Audio Waveform",
-            xaxis_title="Time (seconds)",
-            yaxis_title="Amplitude",
-            height=300,
-            margin=dict(l=20, r=20, t=40, b=20),
+            height=500,
+            margin=dict(l=20, r=20, t=60, b=20),
             hovermode="x unified",
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1
+            )
         )
+        
+        # Update axes
+        fig.update_xaxes(title_text="Time (seconds)", row=2, col=1)
+        fig.update_yaxes(title_text="Amplitude", row=1, col=1)
+        fig.update_yaxes(title_text="Energy", row=2, col=1)
         
         return fig
         
@@ -364,51 +431,77 @@ def main():
                     with col3:
                         st.write(f"**Size:** {file_info['size_mb']:.2f} MB")
                     
-                    # Voice activity status
-                    has_voice = has_voice_activity(file_info)
-                    if has_voice:
-                        st.success("🔊 Voice activity detected")
-                    else:
-                        st.warning("🔇 No voice activity detected")
-                    
                     # Audio player
                     st.write("### Audio Player")
                     st.audio(file_info['path'])
                     
-                    # Display waveform
-                    st.write("### Waveform")
-                    waveform_fig = display_waveform(file_info['path'])
-                    if waveform_fig:
-                        st.plotly_chart(waveform_fig, use_container_width=True)
+                    # Analyze for voice activity first
+                    with st.spinner("Analyzing audio for voice activity..."):
+                        # Display waveform with voice activity analysis
+                        st.write("### Audio Analysis")
+                        waveform_fig = display_waveform(file_info['path'])
+                        if waveform_fig:
+                            st.plotly_chart(waveform_fig, use_container_width=True)
+                            
+                        # Determine if there's voice activity from the waveform analysis
+                        y, sr = librosa.load(file_info['path'], sr=None)
+                        rms = librosa.feature.rms(y=y)[0]
+                        energy = np.mean(rms)
+                        threshold = 0.015
+                        has_voice = energy > threshold
+                        
+                        # Voice activity status with icon and sound level
+                        if has_voice:
+                            st.success(f"🔊 Voice activity detected (Energy: {energy:.6f})")
+                        else:
+                            st.warning(f"🔇 No voice activity detected (Energy: {energy:.6f})")
                     
                     # Visualization if available
                     if file_info['visualization'] and os.path.exists(file_info['visualization']):
-                        st.write("### Visualization")
-                        display_visualization(file_info['visualization'])
+                        with st.expander("Show Detailed Analysis Visualization", expanded=False):
+                            st.write("### Detailed Analysis Visualization")
+                            display_visualization(file_info['visualization'])
                     
-                    # Transcription section
+                    # Transcription section - only show if voice activity is detected
                     st.write("### Transcription")
                     
-                    # Check if transcription exists
-                    transcription = get_transcription(file_info['path'])
-                    
-                    if transcription:
-                        st.write("**Existing Transcription:**")
-                        st.success(transcription)
+                    if has_voice:
+                        # Check if transcription exists
+                        transcription = get_transcription(file_info['path'])
+                        
+                        if transcription:
+                            st.write("**Existing Transcription:**")
+                            st.info(transcription)
+                            
+                            # Option to re-transcribe
+                            if st.button("Generate New Transcription", type="secondary"):
+                                with st.spinner("Transcribing audio..."):
+                                    new_transcription = transcribe_with_whisper(file_info['path'])
+                                    if new_transcription:
+                                        st.success("New transcription complete!")
+                                        st.write("**New Transcription:**")
+                                        st.info(new_transcription)
+                                        time.sleep(1)  # Short pause to let user see the success message
+                                        st.rerun()  # Refresh the page to show the updated transcription
+                                    else:
+                                        st.error("Transcription failed. See error message above.")
+                        else:
+                            st.write("No transcription available for this recording with voice activity.")
+                            
+                            # Transcribe button - only if there's voice activity
+                            if st.button("Transcribe with Whisper", type="primary"):
+                                with st.spinner("Transcribing audio..."):
+                                    new_transcription = transcribe_with_whisper(file_info['path'])
+                                    if new_transcription:
+                                        st.success("Transcription complete!")
+                                        st.write("**New Transcription:**")
+                                        st.info(new_transcription)
+                                        time.sleep(1)  # Short pause to let user see the success message
+                                        st.rerun()  # Refresh the page to show the new transcription
+                                    else:
+                                        st.error("Transcription failed. See error message above.")
                     else:
-                        st.write("No transcription available for this recording.")
-                    
-                    # Transcribe button
-                    if st.button("Transcribe with Whisper", type="primary"):
-                        with st.spinner("Transcribing audio..."):
-                            new_transcription = transcribe_with_whisper(file_info['path'])
-                            if new_transcription:
-                                st.success("Transcription complete!")
-                                st.write("**New Transcription:**")
-                                st.write(new_transcription)
-                                st.rerun()  # Refresh the page to show the new transcription
-                            else:
-                                st.error("Transcription failed. See error message above.")
+                        st.warning("⚠️ Transcription requires voice activity. No voice detected in this recording.")
     
     # Tab 2: Documentation
     with tab2:
