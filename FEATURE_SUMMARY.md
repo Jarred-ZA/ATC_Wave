@@ -11,14 +11,17 @@ The frontend feature branch (`feature/frontend`) adds a comprehensive web-based 
    - Sort and filter recordings by various criteria
    - Display detailed information about each recording
 
-2. **Audio Analysis**
-   - Interactive waveform visualization
-   - Display energy and spectrogram plots
-   - Show voice activity detection results
+2. **Advanced Audio Analysis**
+   - Interactive dual-plot with waveform and energy levels
+   - Voice region highlighting in waveform display
+   - Automatic energy-based voice activity detection
+   - Expandable detailed spectrogram visualizations
 
-3. **Transcription**
-   - View existing transcriptions
+3. **Intelligent Transcription**
+   - Smart workflow that only offers transcription for files with detected voice
+   - View existing transcriptions with clear formatting
    - Generate new transcriptions with a single click
+   - Options to re-transcribe files with existing transcriptions
    - Seamless integration with OpenAI Whisper
 
 4. **Sample Management**

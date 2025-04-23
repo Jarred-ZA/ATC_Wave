@@ -43,9 +43,11 @@ The Audio Library tab provides a complete overview of all recorded ATC communica
 - **Audio Files Table**: Lists all recordings with important details like tower, duration, recording date, and analysis/transcription status
 - **Selection**: Choose any recording to view its details
 - **Audio Player**: Listen to the selected recording directly in your browser
-- **Waveform Display**: View the audio waveform for better visualization
-- **Analysis Results**: See the detailed analysis visualizations including energy levels and spectrograms
-- **Transcription**: Read existing transcriptions or create new ones with a single click
+- **Advanced Waveform Display**: View the interactive audio waveform with voice regions highlighted
+- **Energy Level Analysis**: See real-time energy levels with voice activity threshold indicators
+- **Analysis Results**: Explore detailed analysis visualizations including spectrograms in collapsible sections
+- **Intelligent Transcription**: System automatically determines if audio contains voice before offering transcription
+- **Transcription Management**: Read existing transcriptions or create new ones with a single click
 
 ### Downloading New Samples
 
