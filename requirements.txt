@@ -7,3 +7,5 @@ SpeechRecognition>=3.8.0
 pydub>=0.25.1
 openai>=1.0.0
 python-dotenv>=1.0.0
+streamlit>=1.30.0
+plotly>=5.14.0

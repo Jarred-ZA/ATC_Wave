@@ -49,7 +49,7 @@ A sophisticated tool to monitor air traffic control radio transmissions, detect 
 
 ## 🚀 Usage
 
-### Basic Usage
+### Command-Line Usage
 
 Run the monitor with default settings (60-second samples):
 
@@ -57,13 +57,32 @@ Run the monitor with default settings (60-second samples):
 python atc_monitor.py
 ```
 
-### Custom Duration
-
 Specify a custom sampling duration in seconds:
 
 ```bash
 python atc_monitor.py 120  # Sample for 2 minutes
 ```
+
+### 📱 Interactive Frontend
+
+The application includes a user-friendly web interface for managing recordings:
+
+```bash
+# Start the web interface
+./run_frontend.sh
+
+# Or run directly with Streamlit
+streamlit run atc_frontend.py
+```
+
+The frontend provides:
+- An audio library to browse, play, and manage recordings
+- Visualizations and waveform displays
+- Transcription capabilities with a single click
+- Easy downloading of new samples
+- Complete documentation
+
+![ATC Frontend Screenshot](https://via.placeholder.com/800x400?text=ATC+Frontend+Screenshot)
 
 ### Using OpenAI Whisper
 
@@ -71,7 +90,7 @@ For better transcription results:
 
 1. Get an API key from [OpenAI](https://platform.openai.com/api-keys)
 2. Add it to your `.env` file
-3. Run the monitor as usual - it will automatically use Whisper for transcription
+3. Run the monitor or frontend as usual - it will automatically use Whisper for transcription
 
 For detailed instructions on using Whisper (both API and CLI), see [WHISPER_INSTRUCTIONS.md](WHISPER_INSTRUCTIONS.md)
 
