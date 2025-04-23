@@ -1,0 +1,10 @@
+ATC Monitoring Results: Boston Tower
+Timestamp: 2025-04-23 14:35:19
+URL: https://s1-bos.liveatc.net/kbos_twr
+Duration: 15 seconds
+
+Results Summary:
+Voice Activity: DETECTED
+Energy: 0.041698
+Zero Crossing Rate: 0.142858
+Visualization: analysis_results/analysis_20250423_143534.png

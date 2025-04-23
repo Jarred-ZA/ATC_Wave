@@ -1,6 +1,6 @@
-# ATC Radio Monitor
+# ATC Radio Monitor & Transcriber
 
-A sophisticated tool to monitor air traffic control radio transmissions and detect voice activity with visual feedback and detailed analytics.
+A sophisticated tool to monitor air traffic control radio transmissions, detect voice activity with visual feedback, and transcribe communications with speech recognition technology.
 
 ![ATC Radio Monitor Banner](https://via.placeholder.com/800x200?text=ATC+Radio+Monitor)
 
@@ -8,10 +8,13 @@ A sophisticated tool to monitor air traffic control radio transmissions and dete
 
 - **Live ATC Monitoring**: Download and analyze real-time air traffic control radio feeds
 - **Voice Activity Detection**: Automatically detect presence of voice transmissions
+- **Speech Recognition**: Transcribe ATC communications using advanced AI models
+- **Audio Segmentation**: Identify and isolate individual voice transmissions
 - **Visual Analytics**: Generate waveform, energy, and spectrogram visualizations
 - **Detailed Reporting**: Save comprehensive analysis results to text files
 - **Progress Tracking**: Real-time progress indicators for all operations
 - **Command-line Interface**: Simple CLI with duration parameter support
+- **Audio Archive**: Save all monitored transmissions for later analysis
 
 ## 📋 Prerequisites
 
@@ -57,7 +60,7 @@ python atc_monitor.py 60  # Sample for 60 seconds
 
 ## 📊 Output Files
 
-The program generates two types of output files:
+The program generates several types of output files:
 
 ### Analysis Results
 
@@ -69,20 +72,39 @@ Located in `analysis_results/` directory:
 
 Located in `monitoring_results/` directory:
 - Text files containing detailed monitoring information
-- Includes energy levels, zero crossing rates, and analysis timestamps
+- Includes energy levels, zero crossing rates, and transcriptions
 - Filename format: `Tower_Name_YYYYMMDD_HHMMSS.txt`
+
+### Audio Archive
+
+Located in `audio_archive/` directory:
+- Full WAV recordings of monitored feeds
+- Preserved for later analysis or verification
+- Filename format: `Tower_Name_YYYYMMDD_HHMMSS.wav`
+
+### Audio Segments
+
+Located in `audio_segments/` directory:
+- Individual segments containing isolated voice transmissions
+- Each segment is transcribed separately
+- Filename format: `Tower_Name_YYYYMMDD_HHMMSS_segment_N.wav`
 
 ## 🎯 How It Works
 
 1. **Download**: Captures live streaming audio from ATC feeds
 2. **Convert**: Transforms MP3 stream to WAV format for analysis
-3. **Analyze**: 
+3. **Archive**: Saves a copy of the audio file for reference
+4. **Analyze**: 
    - Calculates audio energy (RMS)
    - Determines zero crossing rate
    - Generates spectrogram
    - Applies threshold to detect voice activity
-4. **Visualize**: Creates graphs for waveform, energy, and frequency content
-5. **Report**: Saves results and generates summary
+5. **Segment**: Identifies individual voice transmissions within the audio
+6. **Transcribe**: Uses speech recognition to convert audio to text
+   - Transcribes the complete audio
+   - Also transcribes individual segments separately
+7. **Visualize**: Creates graphs for waveform, energy, and frequency content
+8. **Report**: Saves detailed results including transcriptions
 
 ## 📡 Supported ATC Feeds
 
@@ -95,10 +117,21 @@ Currently monitored towers:
 
 ## 🔧 Technical Details
 
-The voice activity detection uses a simple threshold-based approach, analyzing:
+### Voice Activity Detection
+
+The system uses a threshold-based approach for voice activity detection:
 
 - **Energy (RMS)**: Measures the overall volume level of the audio
 - **Zero Crossing Rate**: Indicates frequency content and helps differentiate noise from speech
+
+### Speech Recognition
+
+For transcription, the system employs several techniques:
+
+- **Google Speech Recognition API**: Provides accurate speech-to-text conversion
+- **Noise Reduction**: Pre-processes audio to enhance recognition quality
+- **Segmentation**: Identifies distinct voice transmissions for targeted transcription
+- **Energy Thresholding**: Focuses on high-energy segments likely to contain speech
 
 ## 📝 License
 
@@ -111,7 +144,11 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## 🔄 Future Improvements
 
 - Add more sophisticated voice activity detection algorithms
+- Improve transcription accuracy with aviation-specific language models
 - Support for more ATC feeds worldwide
 - Web interface for monitoring and visualization
 - Real-time alerting for detected transmissions
 - Historical data analysis and pattern recognition
+- Airport-specific callsign and terminology recognition
+- Multi-language support for international towers
+- Speech analytics to identify emergency situations
