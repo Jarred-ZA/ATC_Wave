@@ -179,12 +179,25 @@ For transcription, the system employs several techniques:
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
+## 🔄 Development Branches
+
+### Main Branch
+The main branch contains the core ATC monitoring and transcription functionality.
+
+### Feature Branches
+
+- **feature/frontend**: Interactive web interface for the ATC Monitor
+  - Streamlit-based UI for managing recordings
+  - Audio visualization and playback
+  - Integrated transcription capabilities
+  - Download controls for new samples
+  - Detailed documentation in [FRONTEND_GUIDE.md](FRONTEND_GUIDE.md)
+
 ## 🔄 Future Improvements
 
 - Add more sophisticated voice activity detection algorithms
 - Improve transcription accuracy with aviation-specific language models
 - Support for more ATC feeds worldwide
-- Web interface for monitoring and visualization
 - Real-time alerting for detected transmissions
 - Historical data analysis and pattern recognition
 - Airport-specific callsign and terminology recognition
