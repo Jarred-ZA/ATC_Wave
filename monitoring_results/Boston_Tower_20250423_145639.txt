@@ -1,0 +1,5 @@
+ATC Monitoring Results: Boston Tower
+Timestamp: 2025-04-23 14:56:39
+URL: https://s1-bos.liveatc.net/kbos_twr
+Duration: 60 seconds
+

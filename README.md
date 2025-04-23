@@ -73,6 +73,8 @@ For better transcription results:
 2. Add it to your `.env` file
 3. Run the monitor as usual - it will automatically use Whisper for transcription
 
+For detailed instructions on using Whisper (both API and CLI), see [WHISPER_INSTRUCTIONS.md](WHISPER_INSTRUCTIONS.md)
+
 ## 📊 Output Files
 
 The program generates several types of output files:
