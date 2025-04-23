@@ -71,6 +71,14 @@ def get_audio_files():
             transcription_path = os.path.join(os.getcwd(), f"{file.replace('.wav', '_transcription.txt')}")
             has_transcription = os.path.exists(transcription_path)
             
+            # Get transcription content if available
+            transcription_content = None
+            if has_transcription:
+                try:
+                    transcription_content = get_transcription(file_path)
+                except:
+                    pass
+            
             # Check if it has an analysis result
             tower_name = file.split('_')[0] + '_' + file.split('_')[1]
             timestamp = file.split('_')[2].replace('.wav', '')
@@ -79,15 +87,22 @@ def get_audio_files():
             
             # Check for visualization
             viz_file = None
+            analysis_summary = {}
             if has_analysis:
-                # Try to find the visualization path in the monitoring file
+                # Try to find the visualization path and other analysis details in the monitoring file
                 try:
                     with open(monitoring_file, 'r') as f:
                         content = f.read()
+                        # Extract visualization path
                         for line in content.split('\n'):
                             if line.startswith('Visualization:'):
                                 viz_file = line.split('Visualization:')[1].strip()
-                                break
+                            elif line.startswith('Voice Activity:'):
+                                analysis_summary['voice_activity'] = line.split('Voice Activity:')[1].strip()
+                            elif line.startswith('Energy:'):
+                                analysis_summary['energy'] = line.split('Energy:')[1].strip()
+                            elif line.startswith('Zero Crossing Rate:'):
+                                analysis_summary['zcr'] = line.split('Zero Crossing Rate:')[1].strip()
                 except:
                     pass
             
@@ -102,7 +117,9 @@ def get_audio_files():
                 'duration': duration,
                 'modified': mod_time_str,
                 'has_transcription': has_transcription,
+                'transcription_content': transcription_content,
                 'has_analysis': has_analysis,
+                'analysis_summary': analysis_summary,
                 'visualization': viz_file,
                 'monitoring_file': monitoring_file if has_analysis else None,
                 'transcription_file': transcription_path if has_transcription else None
@@ -339,19 +356,41 @@ def display_waveform(audio_path):
         return None
 
 def display_visualization(viz_path):
-    """Display saved visualization image"""
+    """Display saved visualization image with expanded view option"""
     if not viz_path or not os.path.exists(viz_path):
         st.warning("Visualization not found.")
         return
     
     try:
         image = Image.open(viz_path)
-        st.image(image, caption="Audio Analysis Visualization", use_column_width=True)
+        
+        # Display image with option to expand
+        col1, col2 = st.columns([4, 1])
+        with col1:
+            st.image(image, caption="Audio Analysis Visualization", use_column_width=True)
+        
+        with col2:
+            # Add a button to view in full screen
+            if st.button("Full Screen", key="viz_fullscreen"):
+                st.session_state.show_full_viz = True
+        
+        # Display full-screen visualization in a dialog
+        if st.session_state.get('show_full_viz', False):
+            with st.expander("Full Visualization", expanded=True):
+                st.image(image, caption="Full Screen Visualization", use_column_width=True)
+                if st.button("Close", key="close_viz"):
+                    st.session_state.show_full_viz = False
+                    st.rerun()
+                
     except Exception as e:
         st.error(f"Error displaying visualization: {e}")
 
 def main():
     """Main application function"""
+    # Initialize session state
+    if 'show_full_viz' not in st.session_state:
+        st.session_state.show_full_viz = False
+        
     # Page header with logo and title
     st.write("# 🛫 ATC Radio Monitor & Transcriber 🛬")
     
@@ -402,16 +441,50 @@ def main():
         else:
             # Create a dataframe for display
             df = pd.DataFrame(audio_files)
-            df = df[['filename', 'tower', 'duration', 'modified', 'has_transcription', 'has_analysis']]
-            df.columns = ['Filename', 'Tower', 'Duration (s)', 'Recorded', 'Has Transcription', 'Has Analysis']
+            
+            # Create a custom format for the dataframe
+            def highlight_row(row):
+                if row['has_transcription']:
+                    return ['background-color: rgba(52, 152, 219, 0.2)']*len(row)
+                return [''] * len(row)
+            
+            # Select columns and rename them
+            display_df = df[['filename', 'tower', 'duration', 'modified', 'has_transcription', 'has_analysis']]
+            display_df.columns = ['Filename', 'Tower', 'Duration (s)', 'Recorded', 'Has Transcription', 'Has Analysis']
             
             # Display table with selection
             st.write("### Available Recordings")
-            selection = st.selectbox("Select a recording to view details:", 
-                                     options=[f['filename'] for f in audio_files],
-                                     format_func=lambda x: f"{x} ({next((f['tower'] for f in audio_files if f['filename'] == x), '')})")
             
-            st.dataframe(df, use_container_width=True)
+            # Group files by tower
+            towers = sorted(list(set([f['tower'] for f in audio_files])))
+            
+            # Allow filtering by tower
+            selected_tower = st.selectbox("Filter by Tower:", 
+                                         options=["All Towers"] + towers,
+                                         index=0)
+            
+            # Filter files by tower if needed
+            filtered_files = audio_files
+            if selected_tower != "All Towers":
+                filtered_files = [f for f in audio_files if f['tower'] == selected_tower]
+            
+            # Create options for the selectbox
+            file_options = [f['filename'] for f in filtered_files]
+            
+            # Format the display of each option in the dropdown
+            def format_file_option(filename):
+                file_info = next((f for f in filtered_files if f['filename'] == filename), None)
+                transcription_indicator = "📝 " if file_info and file_info['has_transcription'] else ""
+                voice_indicator = "🔊 " if file_info and file_info.get('analysis_summary', {}).get('voice_activity') == "DETECTED" else ""
+                return f"{transcription_indicator}{voice_indicator}{filename} ({file_info['tower']})"
+            
+            # Display selection dropdown with more info
+            selection = st.selectbox("Select a recording to view details:", 
+                                     options=file_options,
+                                     format_func=format_file_option)
+            
+            # Display the dataframe with styling
+            st.dataframe(display_df.style.apply(highlight_row, axis=1), use_container_width=True)
             
             # Display selected file details
             if selection:
@@ -420,16 +493,43 @@ def main():
                 
                 if file_info:
                     st.write("---")
-                    st.write(f"### Details: {file_info['tower']}")
                     
+                    # Create a container for the header with title and badges
+                    header_container = st.container()
+                    with header_container:
+                        # Create columns for title and badges
+                        title_col, badge_col = st.columns([3, 1])
+                        with title_col:
+                            st.write(f"### Details: {file_info['tower']}")
+                        with badge_col:
+                            # Display badges for transcription and voice activity
+                            if file_info['has_transcription']:
+                                st.markdown('<span style="background-color: #3498db; color: white; padding: 4px 8px; border-radius: 4px; margin-right: 5px;">📝 Transcribed</span>', unsafe_allow_html=True)
+                            
+                            voice_detected = file_info.get('analysis_summary', {}).get('voice_activity') == "DETECTED"
+                            if voice_detected:
+                                st.markdown('<span style="background-color: #2ecc71; color: white; padding: 4px 8px; border-radius: 4px;">🔊 Voice Activity</span>', unsafe_allow_html=True)
+                            
                     # File details
-                    col1, col2, col3 = st.columns(3)
+                    st.write("#### Recording Information")
+                    col1, col2, col3, col4 = st.columns(4)
                     with col1:
                         st.write(f"**Date:** {file_info['modified']}")
                     with col2:
                         st.write(f"**Duration:** {file_info['duration']:.2f} seconds")
                     with col3:
                         st.write(f"**Size:** {file_info['size_mb']:.2f} MB")
+                    with col4:
+                        # Show analysis data if available
+                        if file_info.get('analysis_summary', {}).get('energy'):
+                            st.write(f"**Energy:** {file_info['analysis_summary']['energy']}")
+                    
+                    # Show transcription at the top if available
+                    if file_info['has_transcription'] and file_info.get('transcription_content'):
+                        st.write("#### Transcription")
+                        transcription_container = st.container()
+                        with transcription_container:
+                            st.info(file_info['transcription_content'])
                     
                     # Audio player
                     st.write("### Audio Player")
@@ -456,37 +556,68 @@ def main():
                         else:
                             st.warning(f"🔇 No voice activity detected (Energy: {energy:.6f})")
                     
-                    # Visualization if available
-                    if file_info['visualization'] and os.path.exists(file_info['visualization']):
-                        with st.expander("Show Detailed Analysis Visualization", expanded=False):
-                            st.write("### Detailed Analysis Visualization")
-                            display_visualization(file_info['visualization'])
+                    # Create a tab-based interface for visualizations
+                    viz_tab1, viz_tab2 = st.tabs(["Interactive Analysis", "Detailed Visualizations"])
                     
-                    # Transcription section - only show if voice activity is detected
-                    st.write("### Transcription")
+                    with viz_tab1:
+                        st.write("### Audio Analysis")
+                        waveform_fig = display_waveform(file_info['path'])
+                        if waveform_fig:
+                            st.plotly_chart(waveform_fig, use_container_width=True)
+                    
+                    with viz_tab2:
+                        st.write("### Detailed Spectrogram Analysis")
+                        
+                        # Show analysis summary if available
+                        if file_info.get('analysis_summary'):
+                            # Create columns for analysis data
+                            st.write("#### Analysis Summary")
+                            col1, col2 = st.columns(2)
+                            
+                            with col1:
+                                # Voice activity status
+                                voice_status = file_info['analysis_summary'].get('voice_activity', 'Unknown')
+                                if voice_status == "DETECTED":
+                                    st.success("🔊 Voice Activity: Detected")
+                                else:
+                                    st.warning("🔇 Voice Activity: Not Detected")
+                                
+                                # Energy level
+                                energy = file_info['analysis_summary'].get('energy', 'Unknown')
+                                st.metric("Energy Level", energy)
+                            
+                            with col2:
+                                # Zero crossing rate
+                                zcr = file_info['analysis_summary'].get('zcr', 'Unknown')
+                                st.metric("Zero Crossing Rate", zcr)
+                        
+                        # Display the visualization image if available
+                        if file_info['visualization'] and os.path.exists(file_info['visualization']):
+                            st.write("#### Analysis Visualization")
+                            display_visualization(file_info['visualization'])
+                        else:
+                            st.warning("No detailed visualization available for this recording.")
+                    
+                    # Transcription options section
+                    st.write("### Transcription Options")
                     
                     if has_voice:
-                        # Check if transcription exists
-                        transcription = get_transcription(file_info['path'])
-                        
-                        if transcription:
-                            st.write("**Existing Transcription:**")
-                            st.info(transcription)
-                            
+                        # If we already displayed the transcription at the top, just show options
+                        if file_info['has_transcription'] and file_info.get('transcription_content'):
                             # Option to re-transcribe
                             if st.button("Generate New Transcription", type="secondary"):
                                 with st.spinner("Transcribing audio..."):
                                     new_transcription = transcribe_with_whisper(file_info['path'])
                                     if new_transcription:
                                         st.success("New transcription complete!")
-                                        st.write("**New Transcription:**")
                                         st.info(new_transcription)
                                         time.sleep(1)  # Short pause to let user see the success message
                                         st.rerun()  # Refresh the page to show the updated transcription
                                     else:
                                         st.error("Transcription failed. See error message above.")
                         else:
-                            st.write("No transcription available for this recording with voice activity.")
+                            # No transcription yet, so offer to create one
+                            st.write("No transcription available for this recording.")
                             
                             # Transcribe button - only if there's voice activity
                             if st.button("Transcribe with Whisper", type="primary"):
@@ -494,7 +625,6 @@ def main():
                                     new_transcription = transcribe_with_whisper(file_info['path'])
                                     if new_transcription:
                                         st.success("Transcription complete!")
-                                        st.write("**New Transcription:**")
                                         st.info(new_transcription)
                                         time.sleep(1)  # Short pause to let user see the success message
                                         st.rerun()  # Refresh the page to show the new transcription
