@@ -163,6 +163,41 @@ def get_audio_files():
                                 analysis_summary['energy'] = line.split('Energy:')[1].strip()
                             elif line.startswith('Zero Crossing Rate:'):
                                 analysis_summary['zcr'] = line.split('Zero Crossing Rate:')[1].strip()
+                            # Extract transcription information
+                            elif line.startswith('Transcription:'):
+                                analysis_summary['full_transcription'] = line.split('Transcription:')[1].strip()
+                            
+                        # Check for segment transcriptions
+                        if "Segment Transcriptions:" in content:
+                            segments_section = content.split("Segment Transcriptions:")[1].strip()
+                            segment_lines = segments_section.split('\n')
+                            segments = []
+                            
+                            for line in segment_lines:
+                                if "Segment" in line and "(" in line and ")" in line and ":" in line:
+                                    try:
+                                        segment_info = {}
+                                        # Extract segment number
+                                        segment_num = int(line.split('Segment')[1].split('(')[0].strip())
+                                        # Extract timestamp
+                                        timestamp_part = line.split('(')[1].split(')')[0]
+                                        start_time = float(timestamp_part.split('s')[0].strip())
+                                        end_time = float(timestamp_part.split('-')[1].split('s')[0].strip())
+                                        # Extract content
+                                        content = line.split(':', 1)[1].strip().strip('"')
+                                        
+                                        segments.append({
+                                            'segment_num': segment_num,
+                                            'start_time': start_time,
+                                            'end_time': end_time,
+                                            'content': content
+                                        })
+                                    except Exception as e:
+                                        print(f"Error parsing segment: {line} - {e}")
+                            
+                            if segments:
+                                analysis_summary['segments'] = segments
+                                print(f"Found {len(segments)} segments in monitoring file")
                 except Exception as e:
                     print(f"Error parsing monitoring file: {e}")
                     pass
@@ -205,6 +240,269 @@ def get_audio_duration(file_path):
     except Exception as e:
         st.error(f"Error getting audio duration: {e}")
         return 0
+
+def parse_transcription_timeline(transcription_content, monitoring_file=None, file_info=None):
+    """
+    Parse transcription content into a timeline format with timestamps and speaker identification.
+    
+    Args:
+        transcription_content: The raw transcription text
+        monitoring_file: Path to the monitoring file which may contain segment timestamps
+        file_info: Optional full file info dictionary with additional context
+        
+    Returns:
+        List of timeline entries with timestamps, speaker info, and message content
+    """
+    timeline_entries = []
+    
+    # First try to use segments from file_info if available (already parsed)
+    if file_info and file_info.get('analysis_summary') and file_info['analysis_summary'].get('segments'):
+        segments = file_info['analysis_summary']['segments']
+        print(f"Using {len(segments)} pre-parsed segments from file_info")
+        
+        for segment in segments:
+            if segment.get('content'):
+                # Try to identify speaker
+                message_content = segment['content']
+                speaker = "Unknown"
+                
+                # Keywords for tower/controller
+                tower_keywords = ["tower", "cleared", "runway", "controller", "approach", 
+                                 "maintain", "contact", "traffic", "wind", "altimeter"]
+                
+                # Keywords for pilot
+                pilot_keywords = ["roger", "wilco", "affirm", "negative", "with you", 
+                                 "passing", "climbing", "descending", "request"]
+                
+                # Check for tower/controller
+                if any(keyword in message_content.lower() for keyword in tower_keywords):
+                    speaker = "Tower"
+                # Check for pilot
+                elif any(keyword in message_content.lower() for keyword in pilot_keywords):
+                    speaker = "Pilot"
+                # Check for callsigns that indicate pilots
+                elif any(x in message_content.lower() for x in ["cessna", "delta", "american", "southwest", "united"]):
+                    speaker = "Pilot"
+                
+                start_time = segment['start_time']
+                
+                timeline_entries.append({
+                    'timestamp': start_time,
+                    'timestamp_str': f"{int(start_time // 60):02d}:{int(start_time % 60):02d}",
+                    'speaker': speaker,
+                    'message': message_content,
+                    'color': 'blue' if speaker == 'Tower' else 'green',
+                    'segment_id': segment.get('segment_num')
+                })
+        
+        if timeline_entries:
+            return sorted(timeline_entries, key=lambda x: x['timestamp'])
+    
+    # If no segments in file_info, try to get them from monitoring file directly
+    if not timeline_entries and monitoring_file and os.path.exists(monitoring_file):
+        try:
+            with open(monitoring_file, 'r') as f:
+                content = f.read()
+                if "Segment Transcriptions:" in content:
+                    segments_section = content.split("Segment Transcriptions:")[1].strip()
+                    segment_lines = segments_section.split('\n')
+                    
+                    for line in segment_lines:
+                        if "Segment" in line and "(" in line and ")" in line and ":" in line:
+                            # Extract timestamp and content
+                            try:
+                                # Format: Segment X (12.34s - 56.78s): "Message content"
+                                segment_num = int(line.split('Segment')[1].split('(')[0].strip())
+                                timestamp_part = line.split('(')[1].split(')')[0]
+                                start_time = float(timestamp_part.split('s')[0].strip())
+                                end_time = None
+                                if '-' in timestamp_part:
+                                    end_time = float(timestamp_part.split('-')[1].split('s')[0].strip())
+                                message_content = line.split(':', 1)[1].strip().strip('"')
+                                
+                                # Try to identify speaker
+                                speaker = "Unknown"
+                                
+                                # Keywords for tower/controller
+                                tower_keywords = ["tower", "cleared", "runway", "controller", "approach", 
+                                                 "maintain", "contact", "traffic", "wind", "altimeter"]
+                                
+                                # Keywords for pilot
+                                pilot_keywords = ["roger", "wilco", "affirm", "negative", "with you", 
+                                                 "passing", "climbing", "descending", "request"]
+                                
+                                # Check for tower/controller
+                                if any(keyword in message_content.lower() for keyword in tower_keywords):
+                                    speaker = "Tower"
+                                # Check for pilot
+                                elif any(keyword in message_content.lower() for keyword in pilot_keywords):
+                                    speaker = "Pilot"
+                                
+                                if message_content:  # Skip empty segments
+                                    timeline_entries.append({
+                                        'timestamp': start_time,
+                                        'end_time': end_time,
+                                        'timestamp_str': f"{int(start_time // 60):02d}:{int(start_time % 60):02d}",
+                                        'speaker': speaker,
+                                        'message': message_content,
+                                        'color': 'blue' if speaker == 'Tower' else 'green',
+                                        'segment_id': segment_num
+                                    })
+                            except Exception as e:
+                                print(f"Error parsing segment line: {line} - {e}")
+                    
+                    if timeline_entries:
+                        return sorted(timeline_entries, key=lambda x: x['timestamp'])
+        except Exception as e:
+            print(f"Error parsing monitoring file for timeline: {e}")
+    
+    # If we have transcription content but no segments, try to parse it
+    if transcription_content:
+        print(f"Parsing raw transcription content of length {len(transcription_content)}")
+        # Split into sentences and assign approximate timestamps
+        sentences = []
+        
+        # Try to clean up the transcription
+        cleaned_text = transcription_content.replace('...', '.').replace('..', '.')
+        
+        for sentence in cleaned_text.replace('. ', '.\n').split('\n'):
+            sentence = sentence.strip()
+            if sentence:
+                sentences.append(sentence)
+        
+        print(f"Split transcription into {len(sentences)} sentences")
+        
+        total_sentences = len(sentences)
+        if total_sentences > 0:
+            # Get audio duration if file_info is available
+            audio_duration = 60.0  # Default to 60 seconds
+            if file_info and file_info.get('duration'):
+                audio_duration = file_info['duration']
+                print(f"Using actual audio duration: {audio_duration} seconds")
+            
+            # Estimate timestamps based on position in text
+            for i, sentence in enumerate(sentences):
+                # Distribute sentences across the actual audio duration
+                estimated_time = i * (audio_duration / total_sentences)
+                
+                # Try to identify speaker
+                speaker = "Unknown"
+                
+                # Keywords for tower/controller
+                tower_keywords = ["tower", "cleared", "runway", "controller", "approach", 
+                                 "maintain", "contact", "traffic", "wind", "altimeter"]
+                
+                # Keywords for pilot
+                pilot_keywords = ["roger", "wilco", "affirm", "negative", "with you", 
+                                 "passing", "climbing", "descending", "request"]
+                
+                # Check for tower/controller
+                if any(keyword in sentence.lower() for keyword in tower_keywords):
+                    speaker = "Tower"
+                # Check for pilot
+                elif any(keyword in sentence.lower() for keyword in pilot_keywords):
+                    speaker = "Pilot"
+                # Check for callsigns that indicate pilots
+                elif any(x in sentence.lower() for x in ["cessna", "delta", "american", "southwest", "united"]):
+                    speaker = "Pilot"
+                
+                timeline_entries.append({
+                    'timestamp': estimated_time,
+                    'timestamp_str': f"{int(estimated_time // 60):02d}:{int(estimated_time % 60):02d}",
+                    'speaker': speaker,
+                    'message': sentence,
+                    'color': 'blue' if speaker == 'Tower' else 'green'
+                })
+    
+    return timeline_entries
+
+def display_transcription_timeline(timeline_entries, audio_path=None):
+    """
+    Display transcription in a WhatsApp-style chat timeline.
+    
+    Args:
+        timeline_entries: List of parsed timeline entries
+        audio_path: Path to the audio file for playback synchronization
+    """
+    if not timeline_entries:
+        st.warning("No timeline data available for this recording.")
+        return
+        
+    # Add a legend for speakers
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col1:
+        st.markdown('<div style="background-color:rgba(0, 0, 255, 0.1); padding:5px; border-radius:5px;"><span style="color:blue;"><strong>Tower/Controller</strong></span></div>', unsafe_allow_html=True)
+    with col2:
+        st.markdown('<div style="background-color:rgba(0, 128, 0, 0.1); padding:5px; border-radius:5px;"><span style="color:green;"><strong>Pilot</strong></span></div>', unsafe_allow_html=True)
+    with col3:
+        st.markdown('<div style="background-color:rgba(128, 128, 128, 0.1); padding:5px; border-radius:5px;"><span style="color:gray;"><strong>Unknown</strong></span></div>', unsafe_allow_html=True)
+        
+    # Timeline container with scrollable area
+    st.markdown("""
+    <style>
+    .timeline-container {
+        max-height: 500px;
+        overflow-y: auto;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    timeline_container = st.container()
+    with timeline_container:
+        st.markdown('<div class="timeline-container">', unsafe_allow_html=True)
+        
+        # Display each message in the timeline
+        for entry in timeline_entries:
+            # Set colors and alignment based on speaker
+            if entry['speaker'] == "Tower":
+                bgcolor = "rgba(0, 0, 255, 0.1)"
+                textcolor = "blue"
+                align = "left"
+                border = "border-radius: 10px 10px 10px 0px;"
+            elif entry['speaker'] == "Pilot":
+                bgcolor = "rgba(0, 128, 0, 0.1)"
+                textcolor = "green"
+                align = "right"
+                border = "border-radius: 10px 10px 0px 10px;"
+            else:
+                bgcolor = "rgba(128, 128, 128, 0.1)"
+                textcolor = "gray"
+                align = "left"
+                border = "border-radius: 10px;"
+            
+            # Create a chat bubble for the message
+            st.markdown(f"""
+            <div style="width:100%; display:flex; justify-content:{align}; margin-bottom:10px;">
+                <div style="max-width:80%; background-color:{bgcolor}; padding:10px; {border}">
+                    <div style="font-size:0.8em; color:{textcolor}; font-weight:bold;">{entry['speaker']} ({entry['timestamp_str']})</div>
+                    <div style="margin-top:5px;">{entry['message']}</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Add playback controls if we have an audio path
+    if audio_path and os.path.exists(audio_path):
+        st.write("#### Timeline Playback")
+        col1, col2 = st.columns([3, 1])
+        
+        with col1:
+            st.audio(audio_path, start_time=0)
+        
+        with col2:
+            # Jump to timestamp buttons
+            if len(timeline_entries) > 0:
+                selected_timestamp = st.selectbox(
+                    "Jump to timestamp", 
+                    options=[entry['timestamp_str'] for entry in timeline_entries],
+                    format_func=lambda x: f"{x} - {timeline_entries[list(entry['timestamp_str'] for entry in timeline_entries).index(x)]['speaker']}"
+                )
+                
+                st.info(f"Select a timestamp to jump to that point in the audio (Feature in development)")
 
 def has_voice_activity(file_info):
     """Check if the file has voice activity based on monitoring results"""
@@ -785,8 +1083,8 @@ def main():
                         else:
                             st.warning(f"🔇 No voice activity detected (Energy: {energy:.6f})")
                     
-                    # Create a tab-based interface for visualizations
-                    viz_tab1, viz_tab2 = st.tabs(["Interactive Analysis", "Detailed Visualizations"])
+                    # Create a tab-based interface for visualizations and transcription timeline
+                    viz_tab1, viz_tab2, viz_tab3 = st.tabs(["Interactive Analysis", "Detailed Visualizations", "Transcription Timeline"])
                     
                     with viz_tab1:
                         st.write("### Audio Analysis")
@@ -821,6 +1119,19 @@ def main():
                                 st.metric("Zero Crossing Rate", zcr)
                         
                         # Display the visualization image if available
+                    
+                    with viz_tab3:
+                        st.write("### 💬 Transcription Timeline")
+                        
+                        # Parse transcription into timeline format
+                        timeline_entries = parse_transcription_timeline(
+                            file_info.get('transcription_content'),
+                            file_info.get('monitoring_file'),
+                            file_info
+                        )
+                        
+                        # Display the timeline
+                        display_transcription_timeline(timeline_entries, file_info['path'])
                         viz_path = file_info.get('visualization')
                         
                         # If the visualization isn't available or doesn't exist, try to find an alternative
