@@ -1,0 +1,29 @@
+ATC Monitoring Results: Boston Tower
+Timestamp: 2025-04-23 15:39:35
+URL: https://s1-bos.liveatc.net/kbos_twr
+Duration: 60 seconds
+
+Results Summary:
+Voice Activity: DETECTED
+Energy: 0.024686
+Zero Crossing Rate: 0.148698
+Visualization: analysis_results/analysis_20250423_154035.png
+Audio Archive: audio_archive/Boston_Tower_20250423_153935.wav
+
+Transcription:
+"Hello. Twenty two. Three seventy eight, kind of departure. 100times 370, have a good day. You, too. One hundred fifty six fourteen, runway 27, cleared for takeoff. Runway 27, cleared for takeoff. Two hundred twenty nine, need a bobscotch crosswind, 32 left at delta. 32 left at delta, you got 28. Delta eighty eight hundred, runway 27, line up and wait in traffic, four mile final for the crosswind. 27, line up and wait, delta, eighty eight hundred. Morning, Boston, JetBlue seven sixty, ILS three three left. JetBlue seven sixty, Boston Aeroflot Niner, four mile final, travel depart the crossing, on my runway three three left, cleared to land, say gate. Cleared to land three three left, gate twelve, JetBlue. Seven sixty."
+
+Segment Transcriptions:
+Segment 1 (17.31s - 18.87s): "Freeze zone 8, cleared for departure."
+Segment 2 (20.15s - 21.16s): "Skyhawk 370, have a good day."
+Segment 3 (43.01s - 43.55s): "This is an air traffic control radio transmission. It may contain standard aviation phraseology, callsigns, and aviation terminology."
+Segment 4 (43.60s - 45.52s): "Runway 14, runway 27, cleared for takeoff."
+Segment 5 (45.97s - 47.43s): "Alright, 27C, takeoff, thank you."
+Segment 6 (48.67s - 51.35s): "29-28B, cross runway 32L at the Delta."
+Segment 7 (52.73s - 53.43s): "This is an air traffic control radio transmission."
+Segment 8 (53.98s - 57.75s): "Delta 8800, runway 27, line up and wait in traffic, 4 mile final for the crosswind."
+Segment 9 (59.08s - 59.98s): ""
+Segment 10 (61.18s - 63.98s): "W760, ILS 33L"
+Segment 11 (64.07s - 69.34s): "N762BT, N4MF, travel departs the crossing on runway 33L, cleared to land, seg8."
+Segment 12 (69.89s - 72.17s): "QNH 33L, gate 12, turn blue."
+Segment 13 (73.20s - 73.74s): "It may contain standard aviation phraseology, callsigns, runway numbers, and aviation terminology."

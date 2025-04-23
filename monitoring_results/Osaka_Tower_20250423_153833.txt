@@ -1,0 +1,12 @@
+ATC Monitoring Results: Osaka Tower
+Timestamp: 2025-04-23 15:38:33
+URL: https://s1-bos.liveatc.net/rjoo1
+Duration: 60 seconds
+
+Results Summary:
+Voice Activity: NOT DETECTED
+Energy: 0.011495
+Zero Crossing Rate: 0.000002
+Visualization: analysis_results/analysis_20250423_153934.png
+Audio Archive: audio_archive/Osaka_Tower_20250423_153833.wav
+
